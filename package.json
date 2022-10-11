@@ -10,13 +10,13 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:vscode-wechatkit.helloWorld"
+    "onCommand:vscode-wekit-devtools.helloWorld"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "vscode-wechatkit.helloWorld",
+        "command": "vscode-wekit-devtools.helloWorld",
         "title": "Hello World"
       }
     ]

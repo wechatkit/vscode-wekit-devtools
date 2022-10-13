@@ -10,14 +10,19 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:vscode-wekit-devtools.helloWorld"
+    "onCommand:vscode-wekit-devtools.listen",
+    "onCommand:vscode-wekit-devtools.stop"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "vscode-wekit-devtools.helloWorld",
-        "title": "Hello World"
+        "command": "vscode-wekit-devtools.listen",
+        "title": "Start Server"
+      },
+      {
+        "command": "vscode-wekit-devtools.stop",
+        "title": "Stop Server"
       }
     ]
   },
@@ -42,5 +47,7 @@
     "mocha": "^9.2.1",
     "typescript": "^4.5.5"
   },
-  "dependencies": {}
+  "dependencies": {
+    "address": "^1.2.1"
+  }
 }

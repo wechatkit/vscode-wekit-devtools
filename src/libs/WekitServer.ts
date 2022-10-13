@@ -2,6 +2,7 @@ import { createServer, Server, Socket } from "net";
 import { ip } from "address";
 import EventEmitter = require("events");
 import { EventCtx } from "./EventCtx";
+import { Log } from "./Log";
 
 export class WekitServer {
   tcp: Server = createServer();
@@ -21,18 +22,18 @@ export class WekitServer {
 
   init() {
     this.tcp.on("connection", (socket) => {
-      console.log("connected", socket.remoteAddress);
+      Log.debug("connected", socket.remoteAddress);
       const tSocket = this.socketMap.get(socket.remoteAddress!);
       if (tSocket) {
         tSocket.destroy();
         tSocket.removeAllListeners();
-        console.log("重复链接", socket.remoteAddress);
+        Log.debug("重复链接", socket.remoteAddress);
       }
       this.socketMap.set(socket.remoteAddress!, socket);
       this.serverEvent.emit("connection", socket);
       socket.on("data", (data) => {
         const msg = data.toString();
-        console.log("data:", msg);
+        Log.debug("data:", msg);
         const [type, name, value] = JSON.parse(msg);
         this.cl[type as "event" | "request"].emit(name, value, socket);
       });
@@ -47,7 +48,7 @@ export class WekitServer {
     this.init();
     this.tcp.listen(port, () => {
       let addressUrl = `${ip()}:${port}`;
-      console.log(`启动成功监听 ${addressUrl}`);
+      Log.log(`启动成功监听 ${addressUrl}`);
       cb(null, addressUrl);
     });
   }
@@ -55,7 +56,7 @@ export class WekitServer {
   async close() {
     for (const [address, socket] of this.socketMap) {
       await this.emit(socket, "close", 1);
-      console.log("断开链接", address);
+      Log.debug("断开链接", address);
       socket.destroy();
       socket.removeAllListeners();
     }
@@ -75,7 +76,7 @@ export class WekitServer {
       return;
     }
     const sendMsg = JSON.stringify([type, name, data]);
-    console.log(address, "emit:", sendMsg);
+    Log.debug(address, "emit:", sendMsg);
     return new Promise((resolve, reject) => {
       this.socketMap.get(address)!.write(sendMsg, resolve);
     });

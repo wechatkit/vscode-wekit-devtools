@@ -12,7 +12,8 @@
   "activationEvents": [
     "onCommand:wekit-devtools.listen",
     "onCommand:wekit-devtools.stop",
-    "onView:wekit-devtools"
+    "onView:wekit-devtools",
+    "onView:catCoding"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -27,7 +28,11 @@
       },
       {
         "command": "wekit-devtools.refreshEntry",
-        "title": "Refresh"
+        "title": "刷新"
+      },
+      {
+        "command": "wekit-devtools.eventEntry",
+        "title": "事件"
       }
     ],
     "viewsContainers": {
@@ -35,6 +40,13 @@
         {
           "id": "wekit-devtools",
           "title": "Wekit Devtools",
+          "icon": "icon/wekit-logo.svg"
+        }
+      ],
+      "panel": [
+        {
+          "id": "catCoding",
+          "title": "catCoding",
           "icon": "icon/wekit-logo.svg"
         }
       ]
@@ -45,6 +57,14 @@
           "id": "wekit-devtools",
           "name": "Wekit Devtools"
         }
+      ],
+      "catCoding": [
+        {
+          "id": "catCoding",
+          "name": "catCoding",
+          "type": "webview",
+          "contextualTitle": "catCoding"
+        }
       ]
     },
     "menus": {
@@ -52,6 +72,12 @@
         {
           "command": "wekit-devtools.refreshEntry",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "wekit-devtools.eventEntry",
+          "group": "inline"
         }
       ]
     },

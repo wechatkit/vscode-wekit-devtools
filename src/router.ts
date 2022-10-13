@@ -8,4 +8,8 @@ export default function (server: WekitServer) {
   server.route("getSockets", () => {
     return server.getAddressList();
   });
+
+  server.route("pushEventLog", (eventLog: any) => {
+    console.log(eventLog);
+  });
 }

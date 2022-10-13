@@ -18,7 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   router(server);
 
-  let listenCmd = vscode.commands.registerCommand(
+  const listenCmd = vscode.commands.registerCommand(
     "wekit-devtools.listen",
     () => {
       server.listen(9191, (err: { message: string }, address: string) => {
@@ -30,7 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
       });
     }
   );
-  let stopCmd = vscode.commands.registerCommand("wekit-devtools.stop", () => {
+  const stopCmd = vscode.commands.registerCommand("wekit-devtools.stop", () => {
     server
       .close()
       .then(() => {
@@ -40,17 +40,28 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(`关闭失败: ${err.message}`);
       });
   });
-  const sidlerTree = new SidlerTreeDataProvider(server);
 
-  vscode.window.registerTreeDataProvider("wekit-devtools", sidlerTree);
+  new SidlerTreeDataProvider(server, context);
 
-  vscode.commands.registerCommand("wekit-devtools.refreshEntry", () => {
-    sidlerTree.refresh();
-  });
+  const pervView = vscode.window.registerWebviewViewProvider(
+    "catCoding",
+    new PerfViewProvider()
+  );
 
+  context.subscriptions.push(pervView);
   context.subscriptions.push(listenCmd);
   context.subscriptions.push(stopCmd);
 }
 
 // this method is called when your extension is deactivated
 export function deactivate() {}
+
+class PerfViewProvider implements vscode.WebviewViewProvider {
+  resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    context: vscode.WebviewViewResolveContext<unknown>,
+    token: vscode.CancellationToken
+  ): void | Thenable<void> {
+    webviewView.webview.html = `<h1>hello world</h1>`;
+  }
+}

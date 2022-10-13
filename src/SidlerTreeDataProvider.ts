@@ -11,9 +11,25 @@ export class SidlerTreeDataProvider
   readonly onDidChangeTreeData: vscode.Event<ClientItem | undefined | void> =
     this._onDidChangeTreeData.event;
 
-  constructor(public server: WekitServer) {
+  constructor(public server: WekitServer, context: vscode.ExtensionContext) {
     server.bindServerEvent("connection", () => {
       this.refresh();
+    });
+
+    vscode.window.registerTreeDataProvider("wekit-devtools", this);
+
+    vscode.commands.registerCommand("wekit-devtools.refreshEntry", () => {
+      this.refresh();
+    });
+
+    vscode.commands.registerCommand("wekit-devtools.eventEntry", (node) => {
+      console.log("eventEntry", node.label);
+      const panel = vscode.window.createWebviewPanel(
+        node.label, // 只供内部使用，这个webview的标识
+        `Wekit:${node.label}`, // 给用户显示的面板标题
+        vscode.ViewColumn.One, // 给新的webview面板一个编辑器视图
+        {} // Webview选项。我们稍后会用上
+      );
     });
   }
 

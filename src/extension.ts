@@ -3,6 +3,7 @@
 import * as vscode from "vscode";
 import { WekitServer } from "./libs/WekitServer";
 import router from "./router";
+import { SidlerTreeDataProvider } from "./SidlerTreeDataProvider";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -18,7 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
   router(server);
 
   let listenCmd = vscode.commands.registerCommand(
-    "vscode-wekit-devtools.listen",
+    "wekit-devtools.listen",
     () => {
       server.listen(9191, (err: { message: string }, address: string) => {
         if (err) {
@@ -29,19 +30,23 @@ export function activate(context: vscode.ExtensionContext) {
       });
     }
   );
-  let stopCmd = vscode.commands.registerCommand(
-    "vscode-wekit-devtools.stop",
-    () => {
-      server
-        .close()
-        .then(() => {
-          vscode.window.showInformationMessage(`关闭成功`);
-        })
-        .catch((err) => {
-          vscode.window.showErrorMessage(`关闭失败: ${err.message}`);
-        });
-    }
-  );
+  let stopCmd = vscode.commands.registerCommand("wekit-devtools.stop", () => {
+    server
+      .close()
+      .then(() => {
+        vscode.window.showInformationMessage(`关闭成功`);
+      })
+      .catch((err) => {
+        vscode.window.showErrorMessage(`关闭失败: ${err.message}`);
+      });
+  });
+  const sidlerTree = new SidlerTreeDataProvider(server);
+
+  vscode.window.registerTreeDataProvider("wekit-devtools", sidlerTree);
+
+  vscode.commands.registerCommand("wekit-devtools.refreshEntry", () => {
+    sidlerTree.refresh();
+  });
 
   context.subscriptions.push(listenCmd);
   context.subscriptions.push(stopCmd);

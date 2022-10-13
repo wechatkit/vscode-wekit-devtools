@@ -10,19 +10,55 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:vscode-wekit-devtools.listen",
-    "onCommand:vscode-wekit-devtools.stop"
+    "onCommand:wekit-devtools.listen",
+    "onCommand:wekit-devtools.stop",
+    "onView:wekit-devtools"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "vscode-wekit-devtools.listen",
+        "command": "wekit-devtools.listen",
         "title": "Start Server"
       },
       {
-        "command": "vscode-wekit-devtools.stop",
+        "command": "wekit-devtools.stop",
         "title": "Stop Server"
+      },
+      {
+        "command": "wekit-devtools.refreshEntry",
+        "title": "Refresh"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "wekit-devtools",
+          "title": "Wekit Devtools",
+          "icon": "icon/wekit-logo.svg"
+        }
+      ]
+    },
+    "views": {
+      "wekit-devtools": [
+        {
+          "id": "wekit-devtools",
+          "name": "Wekit Devtools"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "wekit-devtools.refreshEntry",
+          "group": "navigation"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "wekit-devtools",
+        "contents": "请点击下面的按钮启动服务。\n[启动服务](command:wekit-devtools.listen)"
       }
     ]
   },

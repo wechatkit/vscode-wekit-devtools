@@ -10,6 +10,7 @@ export class WekitServer {
     event: new EventEmitter(),
     request: new EventEmitter(),
   };
+  serverEvent = new EventEmitter();
 
   constructor() {
     if (WekitServer.instance) {
@@ -28,6 +29,7 @@ export class WekitServer {
         console.log("重复链接", socket.remoteAddress);
       }
       this.socketMap.set(socket.remoteAddress!, socket);
+      this.serverEvent.emit("connection", socket);
       socket.on("data", (data) => {
         const msg = data.toString();
         console.log("data:", msg);
@@ -84,7 +86,12 @@ export class WekitServer {
   }
 
   getSockets() {
-    return this.socketMap.values();
+    return Array.from(this.socketMap.values());
+  }
+
+  bindServerEvent(name: string, handler: any) {
+    this.serverEvent.on(name, handler);
+    return this;
   }
 
   send(socket: Socket | string, name: string, data: any) {

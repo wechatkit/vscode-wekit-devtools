@@ -21,7 +21,7 @@ export class Log {
   }
   static debug(...args: any[]) {
     if (debug) {
-      console.debug(...args);
+      console.log(...args);
     }
   }
   static trace(...args: any[]) {

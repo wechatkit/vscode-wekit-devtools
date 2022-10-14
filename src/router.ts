@@ -1,4 +1,5 @@
 import { WekitServer } from "./libs/WekitServer";
+import store from "./store";
 
 export default function (server: WekitServer) {
   server.route("ping", (data: number) => {
@@ -9,7 +10,7 @@ export default function (server: WekitServer) {
     return server.getAddressList();
   });
 
-  server.route("pushEventLog", (eventLog: any) => {
-    console.log(eventLog);
+  server.route("pushEventLog", (data: any) => {
+    server.eventHub.emit("pushEventLog", data);
   });
 }

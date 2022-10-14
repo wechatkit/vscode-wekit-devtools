@@ -12,6 +12,7 @@ export class WekitServer {
     request: new EventEmitter(),
   };
   serverEvent = new EventEmitter();
+  eventHub = new EventEmitter();
 
   constructor() {
     if (WekitServer.instance) {
@@ -21,11 +22,13 @@ export class WekitServer {
   }
 
   init() {
-    this.tcp.on("connection", (socket) => {
-      Log.debug("connected", socket.remoteAddress);
+    this.tcp.on("connection", async (socket) => {
+      Log.debug("connected", socket.remoteAddress, Date.now());
       const tSocket = this.socketMap.get(socket.remoteAddress!);
       if (tSocket) {
-        tSocket.destroy();
+        await new Promise((resolve) => {
+          tSocket.destroy(resolve as any);
+        });
         tSocket.removeAllListeners();
         Log.debug("重复链接", socket.remoteAddress);
       }
@@ -33,14 +36,14 @@ export class WekitServer {
       this.serverEvent.emit("connection", socket);
       socket.on("data", (data) => {
         const msg = data.toString();
-        Log.debug("data:", msg);
+        Log.debug("data:", socket.remoteAddress, msg, Date.now());
         const [type, name, value] = JSON.parse(msg);
         this.cl[type as "event" | "request"].emit(name, value, socket);
       });
+    });
 
-      this.cl.request.on("hello", (value) => {
-        this.write(socket, "request", "hello", value + 1);
-      });
+    this.cl.request.on("hello", (value, socket) => {
+      this.write(socket, "request", "hello", value + 1);
     });
   }
 
@@ -76,7 +79,8 @@ export class WekitServer {
       return;
     }
     const sendMsg = JSON.stringify([type, name, data]);
-    Log.debug(address, "emit:", sendMsg);
+    Log.debug("emit:", address, sendMsg);
+    console.trace();
     return new Promise((resolve, reject) => {
       this.socketMap.get(address)!.write(sendMsg, resolve);
     });

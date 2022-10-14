@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import { WekitServer } from "./libs/WekitServer";
 import { Socket } from "net";
+import path = require("path");
+import { readFileSync } from "fs";
 
 export class SidlerTreeDataProvider
   implements vscode.TreeDataProvider<ClientItem>
@@ -11,9 +13,18 @@ export class SidlerTreeDataProvider
   readonly onDidChangeTreeData: vscode.Event<ClientItem | undefined | void> =
     this._onDidChangeTreeData.event;
 
-  constructor(public server: WekitServer, context: vscode.ExtensionContext) {
+  private panel: vscode.WebviewPanel | undefined;
+
+  constructor(
+    public server: WekitServer,
+    public context: vscode.ExtensionContext
+  ) {
     server.bindServerEvent("connection", () => {
       this.refresh();
+    });
+
+    server.eventHub.on("pushEventLog", (data: any) => {
+      this.postMessage("pushEventLog", data);
     });
 
     vscode.window.registerTreeDataProvider("wekit-devtools", this);
@@ -23,14 +34,37 @@ export class SidlerTreeDataProvider
     });
 
     vscode.commands.registerCommand("wekit-devtools.eventEntry", (node) => {
-      console.log("eventEntry", node.label);
-      const panel = vscode.window.createWebviewPanel(
-        node.label, // 只供内部使用，这个webview的标识
-        `Wekit:${node.label}`, // 给用户显示的面板标题
-        vscode.ViewColumn.One, // 给新的webview面板一个编辑器视图
-        {} // Webview选项。我们稍后会用上
+      console.log(
+        "eventEntry",
+        node.label,
+        this.panel?.active,
+        this.panel?.visible
       );
+      if (this.panel) {
+        const columnToShowIn = vscode.window.activeTextEditor
+          ? vscode.window.activeTextEditor.viewColumn
+          : undefined;
+        this.panel.reveal(columnToShowIn);
+      } else {
+        this.panel = createWebview(
+          path.join(context.extensionPath, "webview", "main-panel", "dist"),
+          node.label, // 只供内部使用，这个webview的标识
+          `${node.label}/性能` // 给用户显示的面板标题
+        );
+        this.panel.onDidDispose(
+          () => {
+            // 当我们的面板被释放时执行清理
+            this.panel = undefined;
+          },
+          null,
+          context.subscriptions
+        );
+      }
     });
+  }
+
+  postMessage(name: any, data: any) {
+    this.panel?.webview.postMessage([name, data]);
   }
 
   refresh(): void {
@@ -74,4 +108,30 @@ function formatIpv4(str: string | undefined) {
   }
   const lastF = str.lastIndexOf(":");
   return str.substring(lastF + 1);
+}
+
+function createWebview(rootString: string, viewType: string, title: string) {
+  const localResourceRoots = vscode.Uri.file(path.join(rootString, "/"));
+  const vscodeRootUrl = localResourceRoots.with({
+    scheme: "vscode-resource",
+  });
+  const panel = vscode.window.createWebviewPanel(
+    viewType,
+    title,
+    vscode.ViewColumn.One,
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [localResourceRoots],
+      enableCommandUris: true,
+    }
+  );
+  const pagePath = path.join(rootString, "index.html");
+  let html = readFileSync(pagePath, "utf-8");
+  html = html.replace(
+    '<base href="./" />',
+    `<base href="${vscodeRootUrl.toString()}" >`
+  );
+  panel.webview.html = html;
+  return panel;
 }

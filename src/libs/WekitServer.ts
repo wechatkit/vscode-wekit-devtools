@@ -26,9 +26,7 @@ export class WekitServer {
       Log.debug("connected", socket.remoteAddress, Date.now());
       const tSocket = this.socketMap.get(socket.remoteAddress!);
       if (tSocket) {
-        await new Promise((resolve) => {
-          tSocket.destroy(resolve as any);
-        });
+        tSocket.destroy();
         tSocket.removeAllListeners();
         Log.debug("重复链接", socket.remoteAddress);
       }
@@ -80,7 +78,6 @@ export class WekitServer {
     }
     const sendMsg = JSON.stringify([type, name, data]);
     Log.debug("emit:", address, sendMsg);
-    console.trace();
     return new Promise((resolve, reject) => {
       this.socketMap.get(address)!.write(sendMsg, resolve);
     });

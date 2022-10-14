@@ -4,6 +4,8 @@ import * as vscode from "vscode";
 import { WekitServer } from "./libs/WekitServer";
 import router from "./router";
 import { SidlerTreeDataProvider } from "./SidlerTreeDataProvider";
+import { DeviceStore } from "./store";
+import { Socket } from "net";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -41,7 +43,13 @@ export function activate(context: vscode.ExtensionContext) {
       });
   });
 
-  new SidlerTreeDataProvider(server, context);
+  const sidlerTree = new SidlerTreeDataProvider(server, context);
+  const deviceStore = new DeviceStore(server, context);
+
+  server.bindServerEvent("connection", (socket: Socket) => {
+    sidlerTree.refresh();
+    deviceStore.getDevice(socket);
+  });
 
   const pervView = vscode.window.registerWebviewViewProvider(
     "catCoding",

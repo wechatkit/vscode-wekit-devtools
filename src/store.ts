@@ -5,6 +5,8 @@ import path = require("path");
 import { WekitServer } from "./libs/WekitServer";
 import { Socket } from "net";
 import { formatIpv4 } from "./formatIpv4";
+import EventEmitter = require("events");
+import { Log } from "./libs/Log";
 
 type EventLog = {
   entryType: string;
@@ -15,15 +17,16 @@ type EventLog = {
 };
 
 export class EventModel {
-  snapId: string = new Date().toLocaleString();
+  snapId: string = formatDate(new Date());
   pageMap: Map<string, EventLog[]> = new Map();
 }
 
 export class DeviceModel {
   panel: vscode.WebviewPanel | undefined;
 
-  eventModel = new EventModel();
-  eventModelSnap: EventModel[] = [this.eventModel];
+  eventModel!: EventModel;
+  eventModelSnap: EventModel[] = [];
+  webviewEvent = new EventEmitter();
 
   constructor(public ip: string, public deviceStore: DeviceStore) {}
 
@@ -49,11 +52,17 @@ export class DeviceModel {
         });
       };
       this.deviceStore.server.eventHub.on("DeviceModel:pushEventLog", fn);
+      const didReceiveMessageFn = (data: any) => {
+        Log.debug("didReceiveMessageFn", data);
+        this.webviewEvent.emit(data[0], data[1]);
+      };
+      this.panel?.webview.onDidReceiveMessage(didReceiveMessageFn);
+      this.webViewEventHandler();
       this.panel.onDidDispose(
         () => {
           // 当我们的面板被释放时执行清理
-          this.panel = undefined;
           this.deviceStore.server.eventHub.off("DeviceModel:pushEventLog", fn);
+          this.panel = undefined;
         },
         null,
         context.subscriptions
@@ -61,8 +70,27 @@ export class DeviceModel {
     }
   }
 
+  webViewEventHandler() {
+    this.onReceiveMessage("syncSnapPage", (data: any) => {
+      const page = data.page;
+      this.postMessage("postSnapPage", {
+        snapId: this.eventModel.snapId,
+        page,
+        entries: this.eventModel.pageMap.get(page) || [],
+      });
+    });
+  }
+
   postMessage(name: any, data: any) {
     this.panel?.webview.postMessage([name, data]);
+  }
+
+  onReceiveMessage(name: string, cb: any) {
+    this.webviewEvent.on(name, cb);
+  }
+
+  onceReceiveMessage(name: string, cb: any) {
+    this.webviewEvent.once(name, cb);
   }
 
   pushEventLog(page: string, entry: EventLog) {
@@ -87,6 +115,12 @@ export class DeviceModel {
   }
 
   snapEventStore() {
+    if (this.eventModel?.pageMap?.size === 0) {
+      // 删除
+      this.eventModelSnap = this.eventModelSnap.filter(
+        (item) => item.snapId !== this.eventModel.snapId
+      );
+    }
     this.eventModel = new EventModel();
     this.eventModelSnap.push(this.eventModel);
   }
@@ -109,7 +143,6 @@ export class DeviceStore {
       const device = this.deviceMap.get(data.ip);
       if (device) {
         device.activeWebview();
-        console.log("device", device);
 
         device.getSnapList().forEach((item: EventModel) => {
           device.postMessage("postSnap", {
@@ -131,4 +164,10 @@ export class DeviceStore {
   }
 
   static instance: DeviceStore;
+}
+
+function formatDate(date: Date) {
+  return `${date.getFullYear()}-${
+    date.getMonth() + 1
+  }-${date.getDate()} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
 }

@@ -16,7 +16,7 @@
         </q-btn-group> -->
 
       <q-toolbar>
-        <q-btn
+        <!-- <q-btn
           flat
           round
           dense
@@ -24,7 +24,8 @@
           class="q-mr-sm"
           color="red"
         />
-        <q-separator dark vertical inset />
+        <q-separator dark vertical inset /> -->
+        <q-btn flat round dense icon="query_stats" class="q-ml-sm" />
         <q-btn flat round dense icon="delete" class="q-ml-sm" />
       </q-toolbar>
       <q-separator dark />
@@ -33,7 +34,6 @@
         :key="String(pageEvent)"
         icon="text_snippet"
         :label="String(snapId)"
-        :caption="activePage"
       >
         <q-list bordered separator>
           <q-item
@@ -44,7 +44,7 @@
             @click="onClickPageItem(eventLogs, page)"
           >
             <q-item-section>{{ page }}</q-item-section>
-            <!-- <q-item-label caption>Caption</q-item-label> -->
+            <q-item-label caption>{{ eventLogs.length }}</q-item-label>
           </q-item>
         </q-list>
       </q-expansion-item>
@@ -68,6 +68,11 @@
 
           <template v-slot:after>
             <div>
+              <div style="text-align: center">
+                {{ activeSnap }} => {{ activePage }}
+              </div>
+              <q-separator dark />
+
               <Console :logs="eventLogs"></Console>
             </div>
           </template>
@@ -115,7 +120,20 @@ bindServer.on("pushSnapPage", (data: any) => {
   const page = data.page;
   const entry = data.entry;
 
-  const logs = pageEventSnapMap.value.get(snapId).get(page);
+  let snap = pageEventSnapMap.value.get(snapId);
+  if (!snap) {
+    snap = new Map();
+    pageEventSnapMap.value.set(snapId, snap);
+  }
+
+  const logs = snap.get(page);
+  if (!logs) {
+    bindServer.emit("syncSnapPage", {
+      snapId,
+      page,
+    });
+    return;
+  }
   logs.push(entry);
   activePage.value = page;
   activeSnap.value = snapId;
@@ -126,8 +144,19 @@ bindServer.on("postSnapPage", (data: any) => {
   const snapId = data.snapId;
   const page = data.page;
   const entries = data.entries;
+  console.log(data);
 
-  const logs: any[] = pageEventSnapMap.value.get(snapId).get(page);
+  let snap = pageEventSnapMap.value.get(snapId);
+  if (!snap) {
+    snap = new Map();
+    pageEventSnapMap.value.set(snapId, snap);
+  }
+
+  let logs: any[] = snap.get(page);
+  if (!logs) {
+    logs = [];
+    snap.set(page, logs);
+  }
   logs.splice(0, logs.length, ...entries);
   activePage.value = page;
   activeSnap.value = snapId;

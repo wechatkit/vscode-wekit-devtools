@@ -1,5 +1,7 @@
 import { Emitter } from "./Emitter";
 
+const vscode = acquireVsCodeApi();
+
 export class BindServer {
   private emitter = new Emitter();
 
@@ -11,7 +13,7 @@ export class BindServer {
   }
 
   emit(name: string, data: any) {
-    window.parent.postMessage([name, data], "*");
+    vscode.postMessage([name, data]);
   }
 
   on(name: string, cb: any) {

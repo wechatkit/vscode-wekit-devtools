@@ -48,7 +48,11 @@ export function activate(context: vscode.ExtensionContext) {
 
   server.bindServerEvent("connection", (socket: Socket) => {
     sidlerTree.refresh();
-    deviceStore.getDevice(socket);
+    const device = deviceStore.getDevice(socket);
+    device.snapEventStore();
+    if (device?.panel?.visible) {
+      device.activeWebview();
+    }
   });
 
   const pervView = vscode.window.registerWebviewViewProvider(

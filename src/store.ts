@@ -51,7 +51,7 @@ export class DeviceModel {
           entry: data.entry,
         });
       };
-      this.deviceStore.server.eventHub.on("DeviceModel:pushEventLog", fn);
+      this.webviewEvent.on("DeviceModel:pushEventLog", fn);
       const didReceiveMessageFn = (data: any) => {
         Log.debug("didReceiveMessageFn", data);
         this.webviewEvent.emit(data[0], data[1]);
@@ -61,7 +61,7 @@ export class DeviceModel {
       this.panel.onDidDispose(
         () => {
           // 当我们的面板被释放时执行清理
-          this.deviceStore.server.eventHub.off("DeviceModel:pushEventLog", fn);
+          this.webviewEvent.off("DeviceModel:pushEventLog", fn);
           this.panel = undefined;
         },
         null,
@@ -99,7 +99,7 @@ export class DeviceModel {
       this.eventModel.pageMap.set(page, eventLogs);
     }
     eventLogs.push(entry);
-    this.deviceStore.server.eventHub.emit("DeviceModel:pushEventLog", {
+    this.webviewEvent.emit("DeviceModel:pushEventLog", {
       page,
       entry,
     });

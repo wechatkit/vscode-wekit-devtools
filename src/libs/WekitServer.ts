@@ -3,6 +3,7 @@ import { ip } from "address";
 import EventEmitter = require("events");
 import { EventCtx } from "./EventCtx";
 import { Log } from "./Log";
+import { StickyChunk } from "./StickyChunk";
 
 export class WekitServer {
   tcp: Server = createServer();
@@ -13,6 +14,7 @@ export class WekitServer {
   };
   serverEvent = new EventEmitter();
   eventHub = new EventEmitter();
+  stickyChunkMap = new Map<string, StickyChunk>();
 
   constructor() {
     if (WekitServer.instance) {
@@ -30,13 +32,21 @@ export class WekitServer {
         tSocket.removeAllListeners();
         Log.debug("重复链接", socket.remoteAddress);
       }
+      const stickyChunk = new StickyChunk();
+
       this.socketMap.set(socket.remoteAddress!, socket);
       this.serverEvent.emit("connection", socket);
       socket.on("data", (data) => {
         const msg = data.toString();
         Log.debug("data:", socket.remoteAddress, msg, Date.now());
-        const [type, name, value] = JSON.parse(msg);
-        this.cl[type as "event" | "request"].emit(name, value, socket);
+        const msgObj = stickyChunk!.push(new Uint8Array(data.buffer));
+        Log.debug(msgObj);
+
+        for (let i = 0; i < msgObj.length; i++) {
+          const msg = msgObj[i];
+          const [type, name, value] = msg;
+          this.cl[type as "event" | "request"].emit(name, value, socket);
+        }
       });
     });
 
@@ -76,8 +86,8 @@ export class WekitServer {
       console.error("socket address is null");
       return;
     }
-    const sendMsg = JSON.stringify([type, name, data]);
-    Log.debug("emit:", address, sendMsg);
+    Log.debug("emit:", address, [type, name, data]);
+    const sendMsg = StickyChunk.encode([type, name, data]);
     return new Promise((resolve, reject) => {
       this.socketMap.get(address)!.write(sendMsg, resolve);
     });

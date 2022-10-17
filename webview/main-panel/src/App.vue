@@ -156,7 +156,7 @@
 
           <template v-slot:after>
             <div>
-              <div style="text-align: center">Diff Count</div>
+              <div style="text-align: center">Diff Stats</div>
               <q-separator dark />
 
               <Console :logs="diffLogs"></Console>
@@ -219,13 +219,13 @@ const diffLogs = computed(() => {
       const statsTargetValue = targetValue[0];
       diff.push([
         entryNameZh[key as "route"] ?? key,
-        "|",
+        " | ",
         diffCalc(statsValue, statsTargetValue, "count"),
-        "|",
+        " | ",
         diffCalc(statsValue, statsTargetValue, "avg"),
-        "|",
+        " | ",
         diffCalc(statsValue, statsTargetValue, "max"),
-        "|",
+        " | ",
         diffCalc(statsValue, statsTargetValue, "min"),
       ]);
     }
@@ -235,13 +235,25 @@ const diffLogs = computed(() => {
 
   function diffCalc(statsValue: any, targetStatsValue: any, key: string) {
     const ex = key === "avg" ? 2 : 0;
-    let diffValue = statsValue[key] - targetStatsValue[key];
+    let diffValue = targetStatsValue[key] - statsValue[key];
+    const scale = formatNumber((diffValue / statsValue[key]) * 100).toFixed(2);
     diffValue = diffValue.toFixed(ex) as any;
-    return `${key}(${
-      diffValue == 0 ? "-" : diffValue > 0 ? "↑" : "↓"
-    }):${statsValue[key].toFixed(ex)} diff ${targetStatsValue[key].toFixed(
+    return `${key}(${scale}%${
+      diffValue == 0 ? "" : diffValue > 0 ? "↑" : "↓"
+    }): ${statsValue[key].toFixed(ex)} -> ${targetStatsValue[key].toFixed(
       ex
-    )} Result ${diffValue}`;
+    )} => ${diffValue}`;
+  }
+
+  function formatNumber(n: number) {
+    if (n !== n) {
+      // NAN
+      return 0;
+    }
+    if (!Number.isFinite(n)) {
+      return 0;
+    }
+    return n;
   }
 
   function eventLogsStats(logs: any[]) {

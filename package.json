@@ -42,13 +42,6 @@
           "title": "Wekit Devtools",
           "icon": "icon/wekit-logo.svg"
         }
-      ],
-      "panel": [
-        {
-          "id": "catCoding",
-          "title": "catCoding",
-          "icon": "icon/wekit-logo.svg"
-        }
       ]
     },
     "views": {
@@ -56,14 +49,6 @@
         {
           "id": "wekit-devtools",
           "name": "Wekit Devtools"
-        }
-      ],
-      "catCoding": [
-        {
-          "id": "catCoding",
-          "name": "catCoding",
-          "type": "webview",
-          "contextualTitle": "catCoding"
         }
       ]
     },

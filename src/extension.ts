@@ -55,12 +55,12 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  const pervView = vscode.window.registerWebviewViewProvider(
-    "catCoding",
-    new PerfViewProvider()
-  );
+  // const pervView = vscode.window.registerWebviewViewProvider(
+  //   "catCoding",
+  //   new PerfViewProvider()
+  // );
 
-  context.subscriptions.push(pervView);
+  // context.subscriptions.push(pervView);
   context.subscriptions.push(listenCmd);
   context.subscriptions.push(stopCmd);
 }

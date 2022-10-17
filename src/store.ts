@@ -40,7 +40,7 @@ export class DeviceModel {
       this.panel.reveal(columnToShowIn);
     } else {
       this.panel = createWebview(
-        path.join(context.extensionPath, "webview", "main-panel", "dist"),
+        path.join(context.extensionPath, "webview", "main-panel", "dist-app"),
         ip, // 只供内部使用，这个webview的标识
         `${ip}/事件` // 给用户显示的面板标题
       );

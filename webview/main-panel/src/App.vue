@@ -25,8 +25,22 @@
           color="red"
         />
         <q-separator dark vertical inset /> -->
-        <q-btn flat round dense icon="query_stats" class="q-ml-sm" />
-        <q-btn flat round dense icon="delete" class="q-ml-sm" />
+        <q-btn
+          flat
+          round
+          dense
+          icon="query_stats"
+          class="q-ml-sm"
+          @click="onDiff"
+        />
+        <q-btn
+          flat
+          round
+          dense
+          icon="delete"
+          class="q-ml-sm"
+          @click="onClear"
+        />
       </q-toolbar>
       <q-separator dark />
       <q-expansion-item
@@ -52,7 +66,7 @@
     </q-drawer>
 
     <q-page-container>
-      <q-page>
+      <q-page v-if="viewRoute === 'log'">
         <q-splitter v-model="splitterModel" horizontal style="height: 100vh">
           <template v-slot:before>
             <div class="q-pa-md">
@@ -78,13 +92,85 @@
           </template>
         </q-splitter>
       </q-page>
+      <q-page v-else>
+        <q-splitter :model-value="70" horizontal style="height: 100vh">
+          <template v-slot:before>
+            <div class="row">
+              <q-select
+                class="col"
+                v-model="selectSourceSnap"
+                :options="snapOptions"
+                label="SourceSnap"
+                dense
+              />
+              <q-select
+                class="col"
+                v-model="selectSourcePage"
+                :options="sourcePageOptions"
+                label="SourcePage"
+                dense
+              />
+              <q-select
+                class="col"
+                v-model="selectTargetSnap"
+                :options="snapOptions"
+                label="TargetSnap"
+                dense
+              />
+              <q-select
+                class="col"
+                v-model="selectTargetPage"
+                :options="targetPageOptions"
+                label="TargetPage"
+                dense
+              />
+            </div>
+            <q-splitter :model-value="50">
+              <template v-slot:before>
+                <div>
+                  <div style="text-align: center">
+                    {{ selectSourceSnap }} => {{ selectSourcePage }} ({{
+                      sourceLogs.length
+                    }})
+                  </div>
+                  <q-separator dark />
+
+                  <Console :logs="sourceLogs"></Console>
+                </div>
+              </template>
+
+              <template v-slot:after>
+                <div>
+                  <div style="text-align: center">
+                    {{ selectTargetSnap }} => {{ selectTargetPage }} ({{
+                      targetLogs.length
+                    }})
+                  </div>
+                  <q-separator dark />
+
+                  <Console :logs="targetLogs"></Console>
+                </div>
+              </template>
+            </q-splitter>
+          </template>
+
+          <template v-slot:after>
+            <div>
+              <div style="text-align: center">Diff Count</div>
+              <q-separator dark />
+
+              <Console :logs="diffLogs"></Console>
+            </div>
+          </template>
+        </q-splitter>
+      </q-page>
     </q-page-container>
   </q-layout>
 </template>
 
 <script lang="ts" setup>
 import Console from "./components/Console.vue";
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { BindServer } from "./BindServer";
 const splitterModel = ref(0);
 const pageEventSnapMap = ref(new Map());
@@ -94,6 +180,118 @@ const bindServer = new BindServer();
 const eventLogs = ref<any>([]);
 const activeSnap = ref("");
 const activePage = ref("");
+
+const viewRoute = ref("log"); // log | diff
+
+const selectSourceSnap = ref("");
+const selectSourcePage = ref("");
+const selectTargetSnap = ref("");
+const selectTargetPage = ref("");
+const sourceRawLogs = computed(
+  () =>
+    pageEventSnapMap.value
+      ?.get(selectSourceSnap.value)
+      ?.get(selectSourcePage.value) || []
+);
+const sourceLogs = computed(() => {
+  return eventLogsFormat(sourceRawLogs.value);
+});
+const targetRawLogs = computed(
+  () =>
+    pageEventSnapMap.value
+      ?.get(selectTargetSnap.value)
+      ?.get(selectTargetPage.value) || []
+);
+const targetLogs = computed(() => {
+  return eventLogsFormat(targetRawLogs.value);
+});
+const diffLogs = computed(() => {
+  const source = sourceRawLogs.value;
+  const sourceStatsMap = eventLogsStats(source);
+  const target = targetRawLogs.value;
+  const targetStatsMap = eventLogsStats(target);
+  const diff = [];
+
+  for (const [key, value] of sourceStatsMap) {
+    const targetValue = targetStatsMap.get(key);
+    if (targetValue) {
+      const statsValue = value[0];
+      const statsTargetValue = targetValue[0];
+      diff.push([
+        entryNameZh[key as "route"] ?? key,
+        "|",
+        diffCalc(statsValue, statsTargetValue, "count"),
+        "|",
+        diffCalc(statsValue, statsTargetValue, "avg"),
+        "|",
+        diffCalc(statsValue, statsTargetValue, "max"),
+        "|",
+        diffCalc(statsValue, statsTargetValue, "min"),
+      ]);
+    }
+  }
+
+  return diff;
+
+  function diffCalc(statsValue: any, targetStatsValue: any, key: string) {
+    const ex = key === "avg" ? 2 : 0;
+    let diffValue = statsValue[key] - targetStatsValue[key];
+    diffValue = diffValue.toFixed(ex) as any;
+    return `${key}(${
+      diffValue == 0 ? "-" : diffValue > 0 ? "↑" : "↓"
+    }):${statsValue[key].toFixed(ex)} diff ${targetStatsValue[key].toFixed(
+      ex
+    )} Result ${diffValue}`;
+  }
+
+  function eventLogsStats(logs: any[]) {
+    const entryMap = new Map();
+
+    for (let i = 0; i < logs.length; i++) {
+      const log = logs[i];
+
+      let entryList = entryMap.get(log.name);
+      if (!entryList) {
+        entryList = [
+          {
+            name: log.name,
+            sum: 0,
+            avg: 0,
+            min: 0,
+            max: 0,
+            count: 0,
+          },
+        ];
+        entryMap.set(log.name, entryList);
+      }
+      const stats = entryList[0];
+      const duration = log.duration || 0;
+      stats.sum += duration;
+      stats.avg = stats.sum / ++stats.count;
+      stats.min = Math.min(stats.min, duration);
+      stats.max = Math.max(stats.max, duration);
+      entryList.push(log);
+    }
+
+    return entryMap;
+  }
+});
+
+const snapOptions = computed(() => {
+  const snapKeys = [...pageEventSnapMap.value.keys()];
+  return snapKeys;
+});
+
+const sourcePageOptions = computed(() => {
+  return [
+    ...(pageEventSnapMap.value.get(selectSourceSnap.value)?.keys() || []),
+  ];
+});
+const targetPageOptions = computed(() => {
+  return [
+    ...(pageEventSnapMap.value.get(selectTargetSnap.value)?.keys() || []),
+  ];
+});
 
 const entryNameZh = {
   appLaunch: "小程序启动",
@@ -176,6 +374,7 @@ bindServer.on("postSnap", (pageEvent: any) => {
 function onClickPageItem(logs: any, page: string) {
   eventLogs.value = eventLogsFormat(logs);
   activePage.value = page;
+  viewRoute.value = "log";
 }
 
 function eventLogsFormat(logs: any) {
@@ -203,6 +402,16 @@ function eventLogsFormat(logs: any) {
   }
 
   return fLogs;
+}
+
+function onClear() {
+  pageEventSnapMap.value.clear();
+  eventLogs.value = [];
+  bindServer.emit("clear", "");
+}
+
+function onDiff() {
+  viewRoute.value = "diff";
 }
 
 const leftDrawerOpen = ref(false);

@@ -114,6 +114,15 @@ export class DeviceModel {
     });
   }
 
+  clearAll() {
+    this.eventModel = new EventModel();
+    this.eventModelSnap = [this.eventModel];
+    this.postMessage("postSnap", {
+      snapId: this.eventModel.snapId,
+      pageMap: Array.from(this.eventModel.pageMap.entries()),
+    });
+  }
+
   snapEventStore() {
     if (this.eventModel?.pageMap?.size === 0) {
       // 删除

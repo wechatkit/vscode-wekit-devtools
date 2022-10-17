@@ -20,11 +20,11 @@
     "commands": [
       {
         "command": "wekit-devtools.listen",
-        "title": "Start Server"
+        "title": "wekit:Start Server"
       },
       {
         "command": "wekit-devtools.stop",
-        "title": "Stop Server"
+        "title": "wekit:Stop Server"
       },
       {
         "command": "wekit-devtools.refreshEntry",

@@ -1,6 +1,6 @@
 <template>
   <q-layout view="lHh lpR lFf">
-    <q-drawer :model-value="true" side="left" bordered>
+    <q-drawer v-model="leftDrawerOpen" side="left" bordered>
       <!-- drawer content -->
       <!-- <q-drawer-sticky position="top-left" :offset="[0, 0]"> -->
       <!-- <q-btn-group
@@ -91,6 +91,13 @@
             </div>
           </template>
         </q-splitter>
+        <q-page-sticky
+          position="top-left"
+          :offset="[0, 10]"
+          @click="onToggleLeftDrawer"
+        >
+          <q-btn round color="blue-grey" icon="menu" />
+        </q-page-sticky>
       </q-page>
       <q-page v-else>
         <q-splitter :model-value="70" horizontal style="height: 100vh">
@@ -426,9 +433,10 @@ function onDiff() {
   viewRoute.value = "diff";
 }
 
-const leftDrawerOpen = ref(false);
+const leftDrawerOpen = ref(true);
 
-function toggleLeftDrawer() {
+function onToggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;
+  console.log(leftDrawerOpen.value);
 }
 </script>

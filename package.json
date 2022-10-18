@@ -3,6 +3,7 @@
   "displayName": "Wekit Devtools",
   "description": "一个非常好用的小程序的组件和页面的调试插件",
   "version": "0.0.1",
+  "publisher": "wumacoder",
   "engines": {
     "vscode": "^1.52.0"
   },

@@ -20,17 +20,24 @@ export function activate(context: vscode.ExtensionContext) {
 
   router(server);
 
+  const listenHandler = () => {
+    server.listen(9191, (err: { message: string }, address: string) => {
+      if (err) {
+        vscode.window.showErrorMessage(`启动失败: ${err.message}`);
+      } else {
+        vscode.window.showInformationMessage(`监听成功: ${address}`);
+      }
+    });
+  };
+
+  const startBtn = vscode.commands.registerCommand(
+    "wekit-devtools.start",
+    listenHandler
+  );
+
   const listenCmd = vscode.commands.registerCommand(
     "wekit-devtools.listen",
-    () => {
-      server.listen(9191, (err: { message: string }, address: string) => {
-        if (err) {
-          vscode.window.showErrorMessage(`启动失败: ${err.message}`);
-        } else {
-          vscode.window.showInformationMessage(`监听成功: ${address}`);
-        }
-      });
-    }
+    listenHandler
   );
   const stopCmd = vscode.commands.registerCommand("wekit-devtools.stop", () => {
     server
@@ -61,6 +68,7 @@ export function activate(context: vscode.ExtensionContext) {
   // );
 
   // context.subscriptions.push(pervView);
+  context.subscriptions.push(startBtn);
   context.subscriptions.push(listenCmd);
   context.subscriptions.push(stopCmd);
 }

@@ -21,15 +21,15 @@
     "commands": [
       {
         "command": "wekit-devtools.listen",
-        "title": "wekit:Start Server"
+        "title": "Wekit: start listen"
       },
       {
         "command": "wekit-devtools.stop",
-        "title": "wekit:Stop Server"
+        "title": "wekit: stop listen"
       },
       {
-        "command": "wekit-devtools.refreshEntry",
-        "title": "刷新"
+        "command": "wekit-devtools.start",
+        "title": "启动"
       },
       {
         "command": "wekit-devtools.eventEntry",
@@ -56,14 +56,16 @@
     "menus": {
       "view/title": [
         {
-          "command": "wekit-devtools.refreshEntry",
-          "group": "navigation"
+          "command": "wekit-devtools.start",
+          "group": "navigation",
+          "when": "view == wekit-devtools"
         }
       ],
       "view/item/context": [
         {
           "command": "wekit-devtools.eventEntry",
-          "group": "inline"
+          "group": "inline",
+          "when": "viewItem != none"
         }
       ]
     },

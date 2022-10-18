@@ -28,8 +28,12 @@
         "title": "wekit: stop listen"
       },
       {
-        "command": "wekit-devtools.start",
+        "command": "wekit-devtools.startBtn",
         "title": "启动"
+      },
+      {
+        "command": "wekit-devtools.stopBtn",
+        "title": "关闭"
       },
       {
         "command": "wekit-devtools.eventEntry",
@@ -56,9 +60,14 @@
     "menus": {
       "view/title": [
         {
-          "command": "wekit-devtools.start",
+          "command": "wekit-devtools.startBtn",
           "group": "navigation",
-          "when": "view == wekit-devtools"
+          "when": "view == wekit-devtools && !wekit-devtools.serverRunning"
+        },
+        {
+          "command": "wekit-devtools.stopBtn",
+          "group": "navigation",
+          "when": "view == wekit-devtools && wekit-devtools.serverRunning"
         }
       ],
       "view/item/context": [

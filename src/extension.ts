@@ -26,12 +26,18 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(`启动失败: ${err.message}`);
       } else {
         vscode.window.showInformationMessage(`监听成功: ${address}`);
+        // 修改 wekit-devtools.start 按钮
+        vscode.commands.executeCommand(
+          "setContext",
+          "wekit-devtools.serverRunning",
+          true
+        );
       }
     });
   };
 
   const startBtn = vscode.commands.registerCommand(
-    "wekit-devtools.start",
+    "wekit-devtools.startBtn",
     listenHandler
   );
 
@@ -39,16 +45,31 @@ export function activate(context: vscode.ExtensionContext) {
     "wekit-devtools.listen",
     listenHandler
   );
-  const stopCmd = vscode.commands.registerCommand("wekit-devtools.stop", () => {
+
+  const stopHandler = () => {
     server
       .close()
       .then(() => {
+        vscode.commands.executeCommand(
+          "setContext",
+          "wekit-devtools.serverRunning",
+          false
+        );
         vscode.window.showInformationMessage(`关闭成功`);
       })
       .catch((err) => {
         vscode.window.showErrorMessage(`关闭失败: ${err.message}`);
       });
-  });
+  };
+
+  const stopBtn = vscode.commands.registerCommand(
+    "wekit-devtools.stopBtn",
+    stopHandler
+  );
+  const stopCmd = vscode.commands.registerCommand(
+    "wekit-devtools.stop",
+    stopHandler
+  );
 
   const sidlerTree = new SidlerTreeDataProvider(server, context);
   const deviceStore = new DeviceStore(server, context);
@@ -70,6 +91,7 @@ export function activate(context: vscode.ExtensionContext) {
   // context.subscriptions.push(pervView);
   context.subscriptions.push(startBtn);
   context.subscriptions.push(listenCmd);
+  context.subscriptions.push(stopBtn);
   context.subscriptions.push(stopCmd);
 }
 

@@ -2,15 +2,13 @@
   <div class="console">
     <div class="log" v-for="log in logs" :key="log.__id">
       <div class="log-briefly" :class="[log[0]]">
-        <text
+        <span
           v-for="index in log.length - 1"
           class="q-pl-xs briefly-block"
-          :class="{
-            number: typeof log[index] === 'number',
-          }"
           :key="index"
-          >{{ log[index] }}
-        </text>
+          v-html="logBriefly(log[index])"
+        >
+        </span>
       </div>
     </div>
   </div>
@@ -22,6 +20,32 @@ import { ref, defineProps } from "vue";
 const props = defineProps<{
   logs: any[];
 }>();
+
+function logBriefly(briefly: any, isObject: boolean = false): any {
+  if (briefly === null || briefly === undefined) {
+    return briefly;
+  }
+  if (typeof briefly === "string" && isObject) {
+    return `<span style="color: #f60">"${briefly}"</span>`;
+  }
+  if (typeof briefly === "number" || typeof briefly === "boolean") {
+    return `<span style="color: #7070ff">${briefly}</span>`;
+  }
+  if (typeof briefly === "object") {
+    if (Array.isArray(briefly)) {
+      return `[${briefly
+        .slice(0, 5)
+        .map((item) => logBriefly(item, true))
+        .join(", ")}${briefly.length > 5 ? ",..." : ""}]`;
+    } else {
+      return `{${Object.keys(briefly)
+        .slice(0, 5)
+        .map((key) => `${key}: ${logBriefly(briefly[key], true)}`)
+        .join(", ")}${Object.keys(briefly).length > 5 ? ",..." : ""}}`;
+    }
+  }
+  return briefly;
+}
 </script>
 
 <style scoped>
@@ -62,9 +86,5 @@ const props = defineProps<{
 .log-briefly.line {
   background-color: #eee;
   height: 2px;
-}
-
-.briefly-block.number {
-  color: #7070ff;
 }
 </style>

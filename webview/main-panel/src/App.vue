@@ -82,9 +82,10 @@
 
           <template v-slot:after>
             <div>
-              <div style="text-align: center">
+              <div class="fixed-top text-center bg-dark" style="height: 20px">
                 {{ activeSnap }} => {{ activePage }}
               </div>
+              <div style="height: 20px"></div>
               <q-separator dark />
 
               <Console :logs="eventLogs"></Console>
@@ -96,7 +97,7 @@
           :offset="[0, 10]"
           @click="onToggleLeftDrawer"
         >
-          <q-btn round color="blue-grey" icon="menu" />
+          <q-btn round color="dark" icon="menu" />
         </q-page-sticky>
       </q-page>
       <q-page v-else>
@@ -135,7 +136,7 @@
             <q-splitter :model-value="50">
               <template v-slot:before>
                 <div>
-                  <div style="text-align: center">
+                  <div class="text-center">
                     {{ selectSourceSnap }} => {{ selectSourcePage }} ({{
                       sourceLogs.length
                     }})
@@ -148,11 +149,12 @@
 
               <template v-slot:after>
                 <div>
-                  <div style="text-align: center">
+                  <div class="text-center">
                     {{ selectTargetSnap }} => {{ selectTargetPage }} ({{
                       targetLogs.length
                     }})
                   </div>
+
                   <q-separator dark />
 
                   <Console :logs="targetLogs"></Console>
@@ -163,13 +165,20 @@
 
           <template v-slot:after>
             <div>
-              <div style="text-align: center">Diff Stats</div>
+              <div class="text-center">Diff Stats</div>
               <q-separator dark />
 
               <Console :logs="diffLogs"></Console>
             </div>
           </template>
         </q-splitter>
+        <q-page-sticky
+          position="top-left"
+          :offset="[0, 10]"
+          @click="onToggleLeftDrawer"
+        >
+          <q-btn round color="dark" icon="menu" />
+        </q-page-sticky>
       </q-page>
     </q-page-container>
   </q-layout>
@@ -179,6 +188,7 @@
 import Console from "./components/Console.vue";
 import { computed, ref, watch } from "vue";
 import { BindServer } from "./BindServer";
+import { stat } from "fs";
 const splitterModel = ref(0);
 const pageEventSnapMap = ref(new Map());
 
@@ -391,7 +401,11 @@ bindServer.on("postSnap", (pageEvent: any) => {
 });
 
 function onClickPageItem(logs: any, page: string) {
-  eventLogs.value = eventLogsFormat(logs);
+  const tlogs: any[] = [];
+  tlogs.push(...analysisDataFormatLog(analysisData(logs)));
+  tlogs.push(["line"]);
+  tlogs.push(...eventLogsFormat(logs));
+  eventLogs.value = tlogs;
   activePage.value = page;
   viewRoute.value = "log";
 }
@@ -407,7 +421,7 @@ function eventLogsFormat(logs: any) {
     if (duration === undefined) {
       duration = "x";
     }
-    fLogs.push([
+    const log = [
       "info",
       entry.entryType,
       entryNameZh[entry.name as "route"] || entry.name,
@@ -417,7 +431,11 @@ function eventLogsFormat(logs: any) {
       entry.startTime - first.startTime,
       "|耗时:",
       duration,
-    ]);
+    ];
+    if (entry.keys) {
+      log.push("|keys:", entry.keys);
+    }
+    fLogs.push(log);
   }
 
   return fLogs;
@@ -438,5 +456,69 @@ const leftDrawerOpen = ref(true);
 function onToggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;
   console.log(leftDrawerOpen.value);
+}
+
+function analysisData(list: any[]) {
+  const stats: any = {
+    $m: [
+      {
+        title: "逻辑层初始化耗时（代码注入）",
+        key: "jsInit",
+      },
+      {
+        title: "视图层初始化耗时（资源加载）",
+        key: "viewInit",
+      },
+      {
+        title: "首次渲染完成耗时（白屏时间）",
+        key: "firstRender",
+      },
+      {
+        title: "总耗时（不包含初始化）",
+        key: "loadPage",
+      },
+      {
+        title: "总耗时（从点击跳转开始）",
+        key: "loadRoute",
+      },
+    ],
+  };
+  const first = list[0];
+
+  const navigationStart = list.find((item) => item.name === "navigationStart");
+  if (navigationStart)
+    stats.jsInit = navigationStart.startTime - first.startTime;
+
+  const viewLayerRenderStart = list.find(
+    (item) => item.name === "viewLayerRenderStart"
+  );
+  if (viewLayerRenderStart)
+    stats.viewInit = viewLayerRenderStart.startTime - first.startTime;
+
+  const viewLayerRenderEnd = list.find(
+    (item) => item.name === "viewLayerRenderEnd"
+  );
+  if (viewLayerRenderEnd)
+    stats.firstRender = viewLayerRenderEnd.startTime - first.startTime;
+
+  const routeEnd = list.find((item) => item.name === "navigationEnd");
+  if (routeEnd) {
+    stats.loadRoute = routeEnd.startTime - first.startTime;
+    stats.loadPage = routeEnd.startTime - navigationStart.startTime;
+  }
+  return stats;
+}
+
+function analysisDataFormatLog(stats: any) {
+  const logs: any[] = [];
+  stats.$m.forEach((item: any) => {
+    logs.push([
+      "info",
+      item.title,
+      stats[item.key] === undefined ? "x" : stats[item.key],
+      "ms",
+    ]);
+  });
+  return logs;
 }
 </script>

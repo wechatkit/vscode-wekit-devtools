@@ -36,7 +36,7 @@ function logBriefly(briefly: any, isObject: boolean = false): any {
       return `[${briefly
         .slice(0, 5)
         .map((item) => logBriefly(item, true))
-        .join(", ")}${briefly.length > 5 ? ",..." : ""}]`;
+        .join(", ")}${briefly.length > 5 ? ",..." : ""}](${briefly.length})`;
     } else {
       return `{${Object.keys(briefly)
         .slice(0, 5)

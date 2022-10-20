@@ -489,7 +489,7 @@ function analysisData(list: any[]) {
   );
   if (viewLayerRenderEnd) {
     stats.$m.push({
-      title: "首次渲染完成耗时（白屏时间）",
+      title: "首次渲染完成耗时（onPreload -> 结束渲染）",
       key: "firstRender",
     });
     stats.firstRender = viewLayerRenderEnd.startTime - first.startTime;
@@ -501,12 +501,12 @@ function analysisData(list: any[]) {
   const routeEnd = largestContentfulPaint[largestContentfulPaint.length - 1];
   if (routeEnd) {
     stats.$m.push({
-      title: "总耗时（路由开始->最后一次最大内容绘制）",
+      title: "总耗时（路由开始 -> 最后一次最大内容绘制）",
       key: "loadRoute",
     });
     stats.loadRoute = routeEnd.startTime - navigationStart.startTime;
     stats.$m.push({
-      title: "总耗时（onPreload->最后一次最大内容绘制）",
+      title: "总耗时（onPreload -> 最后一次最大内容绘制）",
       key: "loadPage",
     });
     stats.loadPage = routeEnd.startTime - first.startTime;

@@ -460,51 +460,56 @@ function onToggleLeftDrawer() {
 
 function analysisData(list: any[]) {
   const stats: any = {
-    $m: [
-      {
-        title: "逻辑层初始化耗时（代码注入）",
-        key: "jsInit",
-      },
-      {
-        title: "视图层初始化耗时（资源加载）",
-        key: "viewInit",
-      },
-      {
-        title: "首次渲染完成耗时（白屏时间）",
-        key: "firstRender",
-      },
-      {
-        title: "总耗时（不包含初始化）",
-        key: "loadPage",
-      },
-      {
-        title: "总耗时（从点击跳转开始）",
-        key: "loadRoute",
-      },
-    ],
+    $m: [],
   };
-  const first = list[0];
+  const first = list.find((item) => item.name === "onPreload") || list[0];
 
   const navigationStart = list.find((item) => item.name === "navigationStart");
-  if (navigationStart)
+  if (navigationStart) {
+    stats.$m.push({
+      title: "逻辑层初始化耗时（代码注入）",
+      key: "jsInit",
+    });
     stats.jsInit = navigationStart.startTime - first.startTime;
+  }
 
   const viewLayerRenderStart = list.find(
     (item) => item.name === "viewLayerRenderStart"
   );
-  if (viewLayerRenderStart)
+  if (viewLayerRenderStart) {
+    stats.$m.push({
+      title: "视图层初始化耗时（资源加载）",
+      key: "viewInit",
+    });
     stats.viewInit = viewLayerRenderStart.startTime - first.startTime;
+  }
 
   const viewLayerRenderEnd = list.find(
     (item) => item.name === "viewLayerRenderEnd"
   );
-  if (viewLayerRenderEnd)
+  if (viewLayerRenderEnd) {
+    stats.$m.push({
+      title: "首次渲染完成耗时（白屏时间）",
+      key: "firstRender",
+    });
     stats.firstRender = viewLayerRenderEnd.startTime - first.startTime;
+  }
 
-  const routeEnd = list.find((item) => item.name === "navigationEnd");
+  const largestContentfulPaint = list.filter(
+    (item) => item.name === "largestContentfulPaint"
+  );
+  const routeEnd = largestContentfulPaint[largestContentfulPaint.length - 1];
   if (routeEnd) {
-    stats.loadRoute = routeEnd.startTime - first.startTime;
-    stats.loadPage = routeEnd.startTime - navigationStart.startTime;
+    stats.$m.push({
+      title: "总耗时（路由开始->最后一次最大内容绘制）",
+      key: "loadRoute",
+    });
+    stats.loadRoute = routeEnd.startTime - navigationStart.startTime;
+    stats.$m.push({
+      title: "总耗时（onPreload->最后一次最大内容绘制）",
+      key: "loadPage",
+    });
+    stats.loadPage = routeEnd.startTime - first.startTime;
   }
   return stats;
 }

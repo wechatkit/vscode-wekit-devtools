@@ -14,8 +14,9 @@
 <script setup lang="ts">
 import { ref, defineProps } from "vue";
 
-const props = defineProps<{
+const { logs = [], brieflyLimit = 10 } = defineProps<{
   logs: any[];
+  brieflyLimit?: number;
 }>();
 
 function logBriefly(briefly: any, isObject: boolean = false): any {
@@ -31,14 +32,18 @@ function logBriefly(briefly: any, isObject: boolean = false): any {
   if (typeof briefly === "object") {
     if (Array.isArray(briefly)) {
       return `[${briefly
-        .slice(0, 5)
+        .slice(0, brieflyLimit)
         .map((item) => logBriefly(item, true))
-        .join(", ")}${briefly.length > 5 ? ",..." : ""}](${briefly.length})`;
+        .join(", ")}${briefly.length > brieflyLimit ? ",..." : ""}](${
+        briefly.length
+      })`;
     } else {
       return `{${Object.keys(briefly)
-        .slice(0, 5)
+        .slice(0, brieflyLimit)
         .map((key) => `${key}: ${logBriefly(briefly[key], true)}`)
-        .join(", ")}${Object.keys(briefly).length > 5 ? ",..." : ""}}`;
+        .join(", ")}${
+        Object.keys(briefly).length > brieflyLimit ? ",..." : ""
+      }}`;
     }
   }
   return briefly;

@@ -116,6 +116,14 @@ watch($$(logs), () => {
   color: #fff;
 }
 
+:deep(.jv-container.jv-light .jv-item.jv-string) {
+  color: #f60;
+}
+
+:deep(.jv-container.jv-light .jv-item.jv-number) {
+  color: #7070ff;
+}
+
 :deep(.jv-container.jv-light .jv-key) {
   color: #fff;
 }

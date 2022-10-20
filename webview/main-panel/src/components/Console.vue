@@ -1,18 +1,27 @@
 <template>
   <div class="console">
-    <div class="log" v-for="log in logs" :key="log.__id">
+    <div class="log" v-for="(log, index) in logs" :key="log.__id">
       <div class="log-briefly" :class="[log[0]]">
+        <q-icon
+          :class="{ 'rotate-90': expandMap[index] }"
+          @click="expandMap[index] = !expandMap[index]"
+          name="arrow_right"
+        />
         <template v-for="index in log.length - 1" :key="index">
-          &thinsp;
           <span class="briefly-block" v-html="logBriefly(log[index])"> </span>
+          &thinsp;
         </template>
+      </div>
+      <div v-if="expandMap[index]">
+        <json-viewer :value="log" theme="jv-dark"></json-viewer>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps } from "vue";
+import JsonViewer from "vue-json-viewer";
+import { ref, defineProps, watch } from "vue";
 
 const { logs = [], brieflyLimit = 10 } = defineProps<{
   logs: any[];
@@ -48,6 +57,11 @@ function logBriefly(briefly: any, isObject: boolean = false): any {
   }
   return briefly;
 }
+
+const expandMap = ref<{ [key: number]: boolean }>({});
+watch($$(logs), () => {
+  expandMap.value = {};
+});
 </script>
 
 <style scoped>
@@ -88,5 +102,10 @@ function logBriefly(briefly: any, isObject: boolean = false): any {
 .log-briefly.line {
   background-color: #eee;
   height: 2px;
+}
+
+:deep(.jv-container .jv-code) {
+  padding: 0;
+  padding-left: 10px;
 }
 </style>

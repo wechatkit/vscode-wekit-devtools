@@ -2,13 +2,10 @@
   <div class="console">
     <div class="log" v-for="log in logs" :key="log.__id">
       <div class="log-briefly" :class="[log[0]]">
-        <span
-          v-for="index in log.length - 1"
-          class="q-pl-xs briefly-block"
-          :key="index"
-          v-html="logBriefly(log[index])"
-        >
-        </span>
+        <template v-for="index in log.length - 1" :key="index">
+          &thinsp;
+          <span class="briefly-block" v-html="logBriefly(log[index])"> </span>
+        </template>
       </div>
     </div>
   </div>

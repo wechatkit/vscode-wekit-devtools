@@ -13,7 +13,7 @@
         </template>
       </div>
       <div v-if="expandMap[index]">
-        <json-viewer :value="log" theme="jv-dark"></json-viewer>
+        <json-viewer :value="log"></json-viewer>
       </div>
     </div>
   </div>
@@ -107,5 +107,21 @@ watch($$(logs), () => {
 :deep(.jv-container .jv-code) {
   padding: 0;
   padding-left: 10px;
+}
+:deep(.jv-container.jv-light .jv-item.jv-array) {
+  color: #fff;
+}
+
+:deep(.jv-container.jv-light .jv-item.jv-object) {
+  color: #fff;
+}
+
+:deep(.jv-container.jv-light .jv-key) {
+  color: #fff;
+}
+
+:deep(.jv-container.jv-light) {
+  background-color: #333;
+  color: #fff;
 }
 </style>

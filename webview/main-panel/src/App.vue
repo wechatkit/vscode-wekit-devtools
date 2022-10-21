@@ -235,6 +235,7 @@ const diffLogs = computed(() => {
       const statsValue = value[0];
       const statsTargetValue = targetValue[0];
       diff.push([
+        "info",
         entryNameZh[key as "route"] ?? key,
         " | ",
         diffCalc(statsValue, statsTargetValue, "count"),

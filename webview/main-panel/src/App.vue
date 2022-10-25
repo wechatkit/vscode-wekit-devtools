@@ -37,6 +37,14 @@
           flat
           round
           dense
+          icon="query_stats"
+          class="q-ml-sm"
+          @click="onMultiDiff"
+        />
+        <q-btn
+          flat
+          round
+          dense
           icon="delete"
           class="q-ml-sm"
           @click="onClear"
@@ -100,7 +108,87 @@
           <q-btn round color="dark" icon="menu" />
         </q-page-sticky>
       </q-page>
-      <q-page v-else>
+      <q-page v-else-if="viewRoute === 'diff'">
+        <q-splitter :model-value="70" horizontal style="height: 100vh">
+          <template v-slot:before>
+            <div class="row">
+              <q-select
+                class="col"
+                v-model="selectSourceSnap"
+                :options="snapOptions"
+                label="SourceSnap"
+                dense
+              />
+              <q-select
+                class="col"
+                v-model="selectSourcePage"
+                :options="sourcePageOptions"
+                label="SourcePage"
+                dense
+              />
+              <q-select
+                class="col"
+                v-model="selectTargetSnap"
+                :options="snapOptions"
+                label="TargetSnap"
+                dense
+              />
+              <q-select
+                class="col"
+                v-model="selectTargetPage"
+                :options="targetPageOptions"
+                label="TargetPage"
+                dense
+              />
+            </div>
+            <q-splitter :model-value="50">
+              <template v-slot:before>
+                <div>
+                  <div class="text-center">
+                    {{ selectSourceSnap }} => {{ selectSourcePage }} ({{
+                      sourceLogs.length
+                    }})
+                  </div>
+                  <q-separator dark />
+
+                  <Console :logs="sourceLogs"></Console>
+                </div>
+              </template>
+
+              <template v-slot:after>
+                <div>
+                  <div class="text-center">
+                    {{ selectTargetSnap }} => {{ selectTargetPage }} ({{
+                      targetLogs.length
+                    }})
+                  </div>
+
+                  <q-separator dark />
+
+                  <Console :logs="targetLogs"></Console>
+                </div>
+              </template>
+            </q-splitter>
+          </template>
+
+          <template v-slot:after>
+            <div>
+              <div class="text-center">Diff Stats</div>
+              <q-separator dark />
+
+              <Console :logs="diffLogs"></Console>
+            </div>
+          </template>
+        </q-splitter>
+        <q-page-sticky
+          position="top-left"
+          :offset="[0, 10]"
+          @click="onToggleLeftDrawer"
+        >
+          <q-btn round color="dark" icon="menu" />
+        </q-page-sticky>
+      </q-page>
+      <q-page v-else-if="viewRoute === 'multi-diff'">
         <q-splitter :model-value="70" horizontal style="height: 100vh">
           <template v-slot:before>
             <div class="row">
@@ -200,128 +288,20 @@ const activePage = ref("");
 
 const viewRoute = ref("log"); // log | diff
 
-const selectSourceSnap = ref("");
-const selectSourcePage = ref("");
-const selectTargetSnap = ref("");
-const selectTargetPage = ref("");
-const sourceRawLogs = computed(
-  () =>
-    pageEventSnapMap.value
-      ?.get(selectSourceSnap.value)
-      ?.get(selectSourcePage.value) || []
-);
-const sourceLogs = computed(() => {
-  return eventLogsFormat(sourceRawLogs.value);
-});
-const targetRawLogs = computed(
-  () =>
-    pageEventSnapMap.value
-      ?.get(selectTargetSnap.value)
-      ?.get(selectTargetPage.value) || []
-);
-const targetLogs = computed(() => {
-  return eventLogsFormat(targetRawLogs.value);
-});
-const diffLogs = computed(() => {
-  const source = sourceRawLogs.value;
-  const sourceStatsMap = eventLogsStats(source);
-  const target = targetRawLogs.value;
-  const targetStatsMap = eventLogsStats(target);
-  const diff = [];
+const {
+  snapOptions,
+  sourcePageOptions,
+  targetPageOptions,
+  selectSourceSnap,
+  selectSourcePage,
+  selectTargetSnap,
+  selectTargetPage,
+  sourceLogs,
+  targetLogs,
+  diffLogs,
+} = useDiff();
 
-  for (const [key, value] of sourceStatsMap) {
-    const targetValue = targetStatsMap.get(key);
-    if (targetValue) {
-      const statsValue = value[0];
-      const statsTargetValue = targetValue[0];
-      diff.push([
-        "info",
-        entryNameZh[key as "route"] ?? key,
-        " | ",
-        diffCalc(statsValue, statsTargetValue, "count"),
-        " | ",
-        diffCalc(statsValue, statsTargetValue, "avg"),
-        " | ",
-        diffCalc(statsValue, statsTargetValue, "max"),
-        " | ",
-        diffCalc(statsValue, statsTargetValue, "min"),
-      ]);
-    }
-  }
-
-  return diff;
-
-  function diffCalc(statsValue: any, targetStatsValue: any, key: string) {
-    const ex = key === "avg" ? 2 : 0;
-    let diffValue = targetStatsValue[key] - statsValue[key];
-    const scale = formatNumber((diffValue / statsValue[key]) * 100).toFixed(2);
-    diffValue = diffValue.toFixed(ex) as any;
-    return `${key}(${scale}%${
-      diffValue == 0 ? "" : diffValue > 0 ? "↑" : "↓"
-    }): ${statsValue[key].toFixed(ex)} -> ${targetStatsValue[key].toFixed(
-      ex
-    )} => ${diffValue}`;
-  }
-
-  function formatNumber(n: number) {
-    if (n !== n) {
-      // NAN
-      return 0;
-    }
-    if (!Number.isFinite(n)) {
-      return 0;
-    }
-    return n;
-  }
-
-  function eventLogsStats(logs: any[]) {
-    const entryMap = new Map();
-
-    for (let i = 0; i < logs.length; i++) {
-      const log = logs[i];
-
-      let entryList = entryMap.get(log.name);
-      if (!entryList) {
-        entryList = [
-          {
-            name: log.name,
-            sum: 0,
-            avg: 0,
-            min: 0,
-            max: 0,
-            count: 0,
-          },
-        ];
-        entryMap.set(log.name, entryList);
-      }
-      const stats = entryList[0];
-      const duration = log.duration || 0;
-      stats.sum += duration;
-      stats.avg = stats.sum / ++stats.count;
-      stats.min = Math.min(stats.min, duration);
-      stats.max = Math.max(stats.max, duration);
-      entryList.push(log);
-    }
-
-    return entryMap;
-  }
-});
-
-const snapOptions = computed(() => {
-  const snapKeys = [...pageEventSnapMap.value.keys()];
-  return snapKeys;
-});
-
-const sourcePageOptions = computed(() => {
-  return [
-    ...(pageEventSnapMap.value.get(selectSourceSnap.value)?.keys() || []),
-  ];
-});
-const targetPageOptions = computed(() => {
-  return [
-    ...(pageEventSnapMap.value.get(selectTargetSnap.value)?.keys() || []),
-  ];
-});
+// ------------------------------------
 
 const entryNameZh = {
   appLaunch: "小程序启动(appLaunch)",
@@ -450,6 +430,12 @@ function onClear() {
 
 function onDiff() {
   viewRoute.value = "diff";
+  onToggleLeftDrawer();
+}
+
+function onMultiDiff() {
+  viewRoute.value = "multi-diff";
+  onToggleLeftDrawer();
 }
 
 const leftDrawerOpen = ref(true);
@@ -528,5 +514,153 @@ function analysisDataFormatLog(stats: any) {
     ]);
   });
   return logs;
+}
+
+function useDiff() {
+  const selectSourceSnap = ref("");
+  const selectSourcePage = ref("");
+  const selectTargetSnap = ref("");
+  const selectTargetPage = ref("");
+  const sourceRawLogs = computed(
+    () =>
+      pageEventSnapMap.value
+        ?.get(selectSourceSnap.value)
+        ?.get(selectSourcePage.value) || []
+  );
+  const sourceLogs = computed(() => {
+    const logs: any[] = [];
+    logs.push(...analysisDataFormatLog(analysisData(sourceRawLogs.value)));
+    logs.push(["line"]);
+    logs.push(...eventLogsFormat(sourceRawLogs.value));
+    return logs;
+  });
+  const targetRawLogs = computed(
+    () =>
+      pageEventSnapMap.value
+        ?.get(selectTargetSnap.value)
+        ?.get(selectTargetPage.value) || []
+  );
+  const targetLogs = computed(() => {
+    const tlogs: any[] = [];
+    tlogs.push(...analysisDataFormatLog(analysisData(targetRawLogs.value)));
+    tlogs.push(["line"]);
+    tlogs.push(...eventLogsFormat(targetRawLogs.value));
+    return tlogs;
+  });
+  const diffLogs = computed(() => {
+    const source = sourceRawLogs.value;
+    const sourceStatsMap = eventLogsStats(source);
+    const target = targetRawLogs.value;
+    const targetStatsMap = eventLogsStats(target);
+    const diff = [];
+
+    for (const [key, value] of sourceStatsMap) {
+      const targetValue = targetStatsMap.get(key);
+      if (targetValue) {
+        const statsValue = value[0];
+        const statsTargetValue = targetValue[0];
+        diff.push([
+          "info",
+          entryNameZh[key as "route"] ?? key,
+          " | ",
+          diffCalc(statsValue, statsTargetValue, "count"),
+          " | ",
+          diffCalc(statsValue, statsTargetValue, "avg"),
+          " | ",
+          diffCalc(statsValue, statsTargetValue, "max"),
+          " | ",
+          diffCalc(statsValue, statsTargetValue, "min"),
+        ]);
+      }
+    }
+
+    return diff;
+
+    function diffCalc(statsValue: any, targetStatsValue: any, key: string) {
+      const ex = key === "avg" ? 2 : 0;
+      let diffValue = targetStatsValue[key] - statsValue[key];
+      const scale = formatNumber((diffValue / statsValue[key]) * 100).toFixed(
+        2
+      );
+      diffValue = diffValue.toFixed(ex) as any;
+      return `${key}(${scale}%${
+        diffValue == 0 ? "" : diffValue > 0 ? "↑" : "↓"
+      }): ${statsValue[key].toFixed(ex)} -> ${targetStatsValue[key].toFixed(
+        ex
+      )} => ${diffValue}`;
+    }
+
+    function formatNumber(n: number) {
+      if (n !== n) {
+        // NAN
+        return 0;
+      }
+      if (!Number.isFinite(n)) {
+        return 0;
+      }
+      return n;
+    }
+
+    function eventLogsStats(logs: any[]) {
+      const entryMap = new Map();
+
+      for (let i = 0; i < logs.length; i++) {
+        const log = logs[i];
+
+        let entryList = entryMap.get(log.name);
+        if (!entryList) {
+          entryList = [
+            {
+              name: log.name,
+              sum: 0,
+              avg: 0,
+              min: 0,
+              max: 0,
+              count: 0,
+            },
+          ];
+          entryMap.set(log.name, entryList);
+        }
+        const stats = entryList[0];
+        const duration = log.duration || 0;
+        stats.sum += duration;
+        stats.avg = stats.sum / ++stats.count;
+        stats.min = Math.min(stats.min, duration);
+        stats.max = Math.max(stats.max, duration);
+        entryList.push(log);
+      }
+
+      return entryMap;
+    }
+  });
+
+  const snapOptions = computed(() => {
+    const snapKeys = [...pageEventSnapMap.value.keys()];
+    return snapKeys;
+  });
+
+  const sourcePageOptions = computed(() => {
+    return [
+      ...(pageEventSnapMap.value.get(selectSourceSnap.value)?.keys() || []),
+    ];
+  });
+  const targetPageOptions = computed(() => {
+    return [
+      ...(pageEventSnapMap.value.get(selectTargetSnap.value)?.keys() || []),
+    ];
+  });
+
+  return {
+    selectSourceSnap,
+    selectSourcePage,
+    selectTargetSnap,
+    selectTargetPage,
+    sourceLogs,
+    targetLogs,
+    diffLogs,
+    snapOptions,
+    sourcePageOptions,
+    targetPageOptions,
+  };
 }
 </script>

@@ -227,58 +227,65 @@
             <div class="row">
               <q-select
                 class="col"
-                v-model="selectSourceSnap"
+                v-model="selectMultiSourceSnap"
                 :options="snapOptions"
-                label="SourceSnap"
+                label="选择多个源快照"
                 dense
+                multiple
+                emit-value
+                map-options
               />
               <q-select
                 class="col"
-                v-model="selectSourcePage"
-                :options="sourcePageOptions"
-                label="SourcePage"
-                dense
-              />
-              <q-select
-                class="col"
-                v-model="selectTargetSnap"
+                v-model="selectMultiTargetSnap"
                 :options="snapOptions"
-                label="TargetSnap"
+                label="选择多个目标快照"
                 dense
+                multiple
+                emit-value
+                map-options
               />
-              <q-select
-                class="col"
-                v-model="selectTargetPage"
-                :options="targetPageOptions"
-                label="TargetPage"
-                dense
-              />
+              <div class="col row">
+                <q-select
+                  class="col"
+                  v-model="selectDiffPage"
+                  :options="diffPageOptions"
+                  label="选择比较的页面"
+                  dense
+                />
+                <q-btn label="设置" flat>
+                  <q-menu>
+                    <div class="row no-wrap q-pa-md">
+                      <div class="column">
+                        <div class="text-h6 q-mb-md">设置</div>
+                        <q-toggle
+                          v-model="includeMaxMin"
+                          label="包含最大值和最小值"
+                        />
+                        <!-- <q-toggle v-model="bluetooth" label="Bluetooth" /> -->
+                      </div>
+                    </div>
+                  </q-menu>
+                </q-btn>
+              </div>
             </div>
             <q-splitter :model-value="50">
               <template v-slot:before>
                 <div>
-                  <div class="text-center">
-                    {{ selectSourceSnap }} => {{ selectSourcePage }} ({{
-                      sourceLogs.length
-                    }})
-                  </div>
+                  <div class="text-center">源快照数据指标</div>
                   <q-separator dark />
 
-                  <Console :logs="sourceLogs"></Console>
+                  <Console :logs="multiSourceLogs"></Console>
                 </div>
               </template>
 
               <template v-slot:after>
                 <div>
-                  <div class="text-center">
-                    {{ selectTargetSnap }} => {{ selectTargetPage }} ({{
-                      targetLogs.length
-                    }})
-                  </div>
+                  <div class="text-center">目标快照数据指标</div>
 
                   <q-separator dark />
 
-                  <Console :logs="targetLogs"></Console>
+                  <Console :logs="multiTargetLogs"></Console>
                 </div>
               </template>
             </q-splitter>
@@ -286,10 +293,10 @@
 
           <template v-slot:after>
             <div>
-              <div class="text-center">Diff Stats</div>
+              <div class="text-center">比较结果</div>
               <q-separator dark />
 
-              <Console :logs="diffLogs"></Console>
+              <Console :logs="multiDiffLogs"></Console>
             </div>
           </template>
         </q-splitter>
@@ -307,7 +314,7 @@
 
 <script lang="ts" setup>
 import Console from "./components/Console.vue";
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, watchEffect } from "vue";
 import { BindServer } from "./BindServer";
 
 const { snapLabelMap, setMap, mapWrap } = useSnapLabel();
@@ -355,6 +362,17 @@ const {
   targetLogs,
   diffLogs,
 } = useDiff();
+
+const {
+  selectMultiSourceSnap,
+  selectMultiTargetSnap,
+  selectDiffPage,
+  diffPageOptions,
+  includeMaxMin,
+  multiSourceLogs,
+  multiTargetLogs,
+  multiDiffLogs,
+} = useMultiDiff();
 
 // ------------------------------------
 
@@ -572,6 +590,122 @@ function analysisDataFormatLog(stats: any) {
   return logs;
 }
 
+function useMultiDiff() {
+  const selectMultiSourceSnap = ref([]);
+  const selectMultiTargetSnap = ref([]);
+  const selectDiffPage = ref("");
+  const includeMaxMin = ref(true);
+
+  const diffPageOptions = computed(() => {
+    const commonPages = new Set();
+
+    for (const snap of [
+      ...selectMultiSourceSnap.value,
+      ...selectMultiTargetSnap.value,
+    ]) {
+      for (const page of (pageEventSnapMap.value.get(snap)?.keys() as any) ||
+        []) {
+        commonPages.add(page);
+      }
+    }
+
+    return Array.from(commonPages);
+  });
+
+  function multiSnapMergeLogs(
+    selectMultiSourceSnap: string[],
+    page: string = selectDiffPage.value
+  ) {
+    const logs: any[] = [];
+    let statsCount: any = {};
+    for (const snap of selectMultiSourceSnap) {
+      const pageLogs = pageEventSnapMap.value.get(snap)?.get(page);
+      if (pageLogs) {
+        const stats = analysisData(pageLogs);
+        logs.push(["line"]);
+        logs.push(["info", "快照:", mapWrap(snap)]);
+        logs.push(...analysisDataFormatLog(stats));
+        stats.$m.forEach((item: any) => {
+          const prevVal = statsCount[item.key]?.value || 0;
+          const prevCount = statsCount[item.key]?.count || 0;
+          const prevMin = statsCount[item.key]?.min || Number.MAX_SAFE_INTEGER;
+          const prevMax = statsCount[item.key]?.max || 0;
+          statsCount[item.key] = {
+            ...item,
+            value: stats[item.key] + prevVal,
+            count: prevCount + 1,
+            max: Math.max(stats[item.key], prevMax),
+            min: Math.min(stats[item.key], prevMin),
+          };
+        });
+      }
+    }
+    const statsCountLogs = [["info", "聚合平均值"]];
+    for (const key in statsCount) {
+      const item = statsCount[key];
+      if (!includeMaxMin.value) {
+        item.value = item.value - item.max - item.min;
+        item.count = item.count - 2;
+      }
+      statsCountLogs.push(["info", item.title, item.value / item.count, "ms"]);
+    }
+
+    logs.unshift(...statsCountLogs);
+    return {
+      logs,
+      statsCount,
+    };
+  }
+
+  const multiSourceLogs = computed(() => {
+    return multiSnapMergeLogs(selectMultiSourceSnap.value).logs;
+  });
+
+  const multiTargetLogs = computed(() => {
+    return multiSnapMergeLogs(selectMultiTargetSnap.value).logs;
+  });
+
+  const multiDiffLogs = computed(() => {
+    const source = multiSnapMergeLogs(selectMultiSourceSnap.value).statsCount;
+    const target = multiSnapMergeLogs(selectMultiTargetSnap.value).statsCount;
+    const logs: any[] = [];
+
+    for (const key in source) {
+      if (target[key]) {
+        const sourceItem = source[key];
+        const targetItem = target[key];
+        const sourceAvg = sourceItem.value / sourceItem.count;
+        const targetAvg = targetItem.value / targetItem.count;
+        const diff = targetAvg - sourceAvg;
+        logs.push([
+          "info",
+          sourceItem.title,
+          diff,
+          "ms",
+          `(${sourceAvg} -> ${targetAvg})`,
+          diff > 0 ? "↑" : "↓",
+          `<span class="text-${diff > 0 ? "red" : "green"}">${(
+            Math.abs(diff / sourceAvg) * 100
+          ).toFixed(2)}%</span>`,
+        ]);
+      }
+    }
+
+    return logs;
+  });
+
+  return {
+    selectDiffPage,
+    diffPageOptions,
+    selectMultiSourceSnap,
+    selectMultiTargetSnap,
+    includeMaxMin,
+    multiSourceLogs,
+    multiTargetLogs,
+    multiDiffLogs,
+  };
+}
+
 function useDiff() {
   const selectSourceSnap = ref("");
   const selectSourcePage = ref("");
@@ -664,7 +798,7 @@ function useDiff() {
         diffValue == 0 ? "" : diffValue > 0 ? "↑" : "↓"
       }): ${statsValue[key].toFixed(ex)} -> ${targetStatsValue[key].toFixed(
         ex
-      )} => ${diffValue}`;
+      )} -> ${diffValue}`;
     }
 
     function formatNumber(n: number) {

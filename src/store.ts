@@ -57,10 +57,11 @@ export class DeviceModel {
         this.webviewEvent.emit(data[0], data[1]);
       };
       this.panel?.webview.onDidReceiveMessage(didReceiveMessageFn);
-      this.webViewEventHandler();
+      const clearEvent = this.webViewEventHandler();
       this.panel.onDidDispose(
         () => {
           // 当我们的面板被释放时执行清理
+          clearEvent();
           this.webviewEvent.off("DeviceModel:pushEventLog", fn);
           this.panel = undefined;
         },
@@ -71,14 +72,24 @@ export class DeviceModel {
   }
 
   webViewEventHandler() {
-    this.onReceiveMessage("syncSnapPage", (data: any) => {
+    const syncSnapPageFn = (data: any) => {
       const page = data.page;
       this.postMessage("postSnapPage", {
         snapId: this.eventModel.snapId,
         page,
         entries: this.eventModel.pageMap.get(page) || [],
       });
-    });
+    };
+    this.onReceiveMessage("syncSnapPage", syncSnapPageFn);
+    const clearFn = (data: any) => {
+      this.clearAll();
+    };
+    this.onReceiveMessage("clear", clearFn);
+
+    return () => {
+      this.offReceiveMessage("syncSnapPage", syncSnapPageFn);
+      this.offReceiveMessage("clear", clearFn);
+    };
   }
 
   postMessage(name: any, data: any) {
@@ -91,6 +102,10 @@ export class DeviceModel {
 
   onceReceiveMessage(name: string, cb: any) {
     this.webviewEvent.once(name, cb);
+  }
+
+  offReceiveMessage(name: string, cb: any) {
+    this.webviewEvent.off(name, cb);
   }
 
   pushEventLog(page: string, entry: EventLog) {

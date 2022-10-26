@@ -37,7 +37,7 @@
           flat
           round
           dense
-          icon="query_stats"
+          icon="difference"
           class="q-ml-sm"
           @click="onMultiDiff"
         />

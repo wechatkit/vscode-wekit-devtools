@@ -20,8 +20,11 @@
 </template>
 
 <script setup lang="ts">
+import { useQuasar } from "quasar";
 import JsonViewer from "vue-json-viewer";
 import { ref, defineProps, watch } from "vue";
+
+const $q = useQuasar();
 
 const { logs = [], brieflyLimit = 10 } = defineProps<{
   logs: any[];

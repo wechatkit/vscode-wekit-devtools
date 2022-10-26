@@ -37,7 +37,7 @@
           flat
           round
           dense
-          icon="difference"
+          icon="auto_graph"
           class="q-ml-sm"
           @click="onMultiDiff"
         />
@@ -54,9 +54,38 @@
       <q-expansion-item
         v-for="[snapId, pageEvent] in pageEventSnapMap"
         :key="String(pageEvent)"
-        icon="text_snippet"
-        :label="String(snapId)"
       >
+        <template v-slot:header>
+          <q-item-section avatar>
+            <q-avatar icon="text_snippet" text-color="white" />
+          </q-item-section>
+
+          <q-item-section no-wrap>
+            <q-item-label>{{ mapWrap(String(snapId)) }}</q-item-label>
+            <q-item-label caption>{{ snapId }}</q-item-label>
+          </q-item-section>
+
+          <q-item-section side>
+            <div class="row">
+              <q-btn icon="edit" flat round dense size="sm">
+                <q-popup-edit
+                  :model-value="mapWrap(String(snapId))"
+                  @update:model-value="setMap(snapId, $event)"
+                  auto-save
+                  v-slot="scope"
+                >
+                  <q-input
+                    v-model="scope.value"
+                    dense
+                    autofocus
+                    counter
+                    @keyup.enter="scope.set"
+                  />
+                </q-popup-edit>
+              </q-btn>
+            </div>
+          </q-item-section>
+        </template>
         <q-list bordered separator>
           <q-item
             v-for="[page, eventLogs] in pageEvent"
@@ -118,6 +147,8 @@
                 :options="snapOptions"
                 label="SourceSnap"
                 dense
+                emit-value
+                map-options
               />
               <q-select
                 class="col"
@@ -132,6 +163,8 @@
                 :options="snapOptions"
                 label="TargetSnap"
                 dense
+                emit-value
+                map-options
               />
               <q-select
                 class="col"
@@ -276,7 +309,29 @@
 import Console from "./components/Console.vue";
 import { computed, ref, watch } from "vue";
 import { BindServer } from "./BindServer";
-import { stat } from "fs";
+
+const { snapLabelMap, setMap, mapWrap } = useSnapLabel();
+
+function useSnapLabel() {
+  const snapLabelMap = ref(new Map<string, string>());
+  function setMap(snapId: string, label: string) {
+    const oldLabel = snapLabelMap.value.get(snapId);
+    if (oldLabel) {
+      snapLabelMap.value.delete(oldLabel);
+    }
+    snapLabelMap.value.set(snapId, label);
+    snapLabelMap.value.set(label, snapId);
+  }
+  function mapWrap(snapId: string) {
+    return snapLabelMap.value.get(snapId) || snapId;
+  }
+  return {
+    snapLabelMap,
+    setMap,
+    mapWrap,
+  };
+}
+
 const splitterModel = ref(0);
 const pageEventSnapMap = ref(new Map());
 
@@ -392,7 +447,6 @@ function onClickPageItem(logs: any, page: string) {
 }
 
 function eventLogsFormat(logs: any) {
-  logs = logs.sort((a: any, b: any) => a.startTime - b.startTime);
   const first = logs[0];
   const fLogs = [];
 
@@ -446,6 +500,8 @@ function onToggleLeftDrawer() {
 }
 
 function analysisData(list: any[]) {
+  list = list.sort((a: any, b: any) => a.startTime - b.startTime);
+
   const stats: any = {
     $m: [],
   };
@@ -550,16 +606,37 @@ function useDiff() {
   const diffLogs = computed(() => {
     const source = sourceRawLogs.value;
     const sourceStatsMap = eventLogsStats(source);
+    const sourceCount = analysisData(source);
     const target = targetRawLogs.value;
     const targetStatsMap = eventLogsStats(target);
-    const diff = [];
+    const targetCount = analysisData(target);
+    const diffLogs = [];
+
+    console.log(sourceCount, targetCount);
+
+    for (const item of sourceCount.$m) {
+      if (targetCount[item.key] === undefined) {
+        continue;
+      }
+      const val = targetCount[item.key] - sourceCount[item.key];
+      diffLogs.push([
+        "info",
+        item.title,
+        val,
+        "ms",
+        val > 0 ? "↑" : "↓",
+        `${(Math.abs(val / targetCount[item.key]) * 100).toFixed(2)}%`,
+      ]);
+    }
+
+    diffLogs.push(["line"]);
 
     for (const [key, value] of sourceStatsMap) {
       const targetValue = targetStatsMap.get(key);
       if (targetValue) {
         const statsValue = value[0];
         const statsTargetValue = targetValue[0];
-        diff.push([
+        diffLogs.push([
           "info",
           entryNameZh[key as "route"] ?? key,
           " | ",
@@ -574,7 +651,7 @@ function useDiff() {
       }
     }
 
-    return diff;
+    return diffLogs;
 
     function diffCalc(statsValue: any, targetStatsValue: any, key: string) {
       const ex = key === "avg" ? 2 : 0;
@@ -636,7 +713,10 @@ function useDiff() {
 
   const snapOptions = computed(() => {
     const snapKeys = [...pageEventSnapMap.value.keys()];
-    return snapKeys;
+    return snapKeys.map((snapId) => ({
+      label: mapWrap(snapId),
+      value: snapId,
+    }));
   });
 
   const sourcePageOptions = computed(() => {
